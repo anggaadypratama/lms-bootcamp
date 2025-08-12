@@ -1,0 +1,36 @@
+# Configuration file for golangci-lint
+# https://golangci-lint.run/usage/configuration/
+
+run:
+  timeout: 5m
+  tests: true
+  go: "1.23" # Sesuaikan dengan versi Go yang digunakan golangci-lint
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    # - typecheck  # Temporarily disabled due to JWT package detection issue
+    - unused
+    - gofmt
+    - goimports
+    - gosec
+    - goconst
+    - misspell
+    - revive
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gosec
+
+output:
+  formats:
+    - format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
