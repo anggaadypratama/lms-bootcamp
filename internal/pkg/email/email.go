@@ -4,6 +4,9 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
+	"strconv"
+
+	"lms-bootcamp/config"
 
 	"gopkg.in/gomail.v2"
 )
@@ -17,14 +20,26 @@ type EmailRequest struct {
 
 type EmailService struct {
 	Dialer *gomail.Dialer
+    cfg    *config.Config
 }
 
 func NewEmailService() *EmailService {
-	dialer := gomail.NewDialer("localhost", 1025, "", "")
+    conf, err := config.NewConfig()
+    if err != nil {
+        log.Fatal("Failed to load config:", err)
+    }
+
+	port, err := strconv.Atoi(conf.MailPort)
+	if err != nil {
+		log.Fatal("Invalid MAIL_PORT:", err)
+	}
+
+	dialer := gomail.NewDialer(conf.MailHost, port, conf.MailUser, conf.MailPass)
     dialer.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 
 	return &EmailService{
 		Dialer: dialer,
+		cfg:    conf,
 	}
 }
 
@@ -32,14 +47,13 @@ func (s *EmailService) SendEmailWithChannel(req EmailRequest) {
     go func() {
         defer func() {
             if r := recover(); r != nil {
-                fmt.Println("Panic saat kirim email:", r)
                 req.ResultChan <- fmt.Errorf("panic: %v", r)
             }
             close(req.ResultChan)
         }()
 
         msg := gomail.NewMessage()
-        msg.SetHeader("From", "shilla@beloved.com")
+        msg.SetHeader("From", s.cfg.MailFrom)
         msg.SetHeader("To", req.To)
         msg.SetHeader("Subject", req.Subject)
         msg.SetBody("text/plain", req.Body)

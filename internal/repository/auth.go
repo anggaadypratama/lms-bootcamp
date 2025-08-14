@@ -19,12 +19,10 @@ func NewAuthRepository(db *gorm.DB) *AuthRepository {
 }
 
 func (r *AuthRepository) FindByEmail(ctx context.Context, email string) (*models.UserModel, error) {
-    // Method 2: Pakai typed filter
     filters := map[string]interface{}{}
     filters["email"] = email
-    
-    // Atau bisa juga pakai where clause yang lebih explicit
-    users, err := r.base.Join("Role").Where("email = ?", email).GetAll(ctx)
+
+    users, err := r.base.Join("Role").Where("email = ? AND deleted_at IS NULL", email).GetAll(ctx)
     if err != nil {
         return nil, err
     }

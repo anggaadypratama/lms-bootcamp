@@ -3,6 +3,7 @@ package utils
 import (
 	"lms-bootcamp/config"
 	"time"
+	"unicode"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -51,4 +52,23 @@ func (u *Utils) ValidateJWTToken(token string) (jwt.MapClaims, error) {
 	}
 
 	return parsedToken.Claims.(jwt.MapClaims), nil
+}
+
+func (u *Utils) ToPascalCase(s string) string {
+	var result []rune
+	capitalizeNext := true
+
+	for _, r := range s {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			if capitalizeNext {
+				result = append(result, unicode.ToUpper(r))
+				capitalizeNext = false
+			} else {
+				result = append(result, unicode.ToLower(r))
+			}
+		} else {
+			capitalizeNext = true // Next letter should be capitalized
+		}
+	}
+	return string(result)
 }

@@ -16,11 +16,11 @@ func NewGormRepository[T any](db *gorm.DB) *GormRepository[T] {
 	return &GormRepository[T]{db: db}
 }
 
-func (r *GormRepository[T]) GetAll(ctx context.Context) ([]T, error) {
+func (r *GormRepository[T]) GetAll(ctx context.Context,table ...string) ([]T, error) {
 	var items []T
 
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Find(&items).Error; err != nil {
+		if err := tx.Where(fmt.Sprintf("%s.deleted_at IS NULL", table[0])).Find(&items).Error; err != nil {
 			return err
 		}
 		return nil
@@ -44,7 +44,7 @@ func (r *GormRepository[T]) Create(ctx context.Context, item *T) error {
 
 func (r *GormRepository[T]) Update(ctx context.Context, id string, item *T) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(new(T)).Where("id = ?", id).Updates(item).Error; err != nil {
+		if err := tx.Model(new(T)).Where("id = ? AND deleted_at IS NULL", id).Updates(item).Error; err != nil {
 			return err
 		}
 		return nil
@@ -71,7 +71,7 @@ func (r *GormRepository[T]) GetById(ctx context.Context, id string, table ...str
 			idQuery = fmt.Sprintf("%s.id = ?", table[0])
 		}
 
-		if err := tx.First(&item, idQuery, id).Error; err != nil {
+		if err := tx.Where(table[0]+".deleted_at IS NULL").First(&item, idQuery, id).Error; err != nil {
 			return err
 		}
 		return nil
@@ -84,7 +84,7 @@ func (r *GormRepository[T]) GetById(ctx context.Context, id string, table ...str
 	return &item, nil
 }
 
-func (r *GormRepository[T]) GetByFilter(ctx context.Context, filter *map[string]interface{}) ([]T, error) {
+func (r *GormRepository[T]) GetByFilter(ctx context.Context, filter map[string]interface{}) ([]T, error) {
 	var items []T
 
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -109,36 +109,35 @@ func (q *GormRepository[T]) Paginate(ctx context.Context, page, perPage int) (*d
         return nil, err
     }
 
+
     if page < 1 {
         page = 1
     }
     if perPage < 1 {
         perPage = 10
     }
+
     
     offset := (page - 1) * perPage
-    // totalPages := int((total + int64(perPage) - 1) / int64(perPage))
     
-    // Get paginated data
-    if err := q.db.WithContext(ctx).Offset(offset).Limit(perPage).Find(&items).Error; err != nil {
+    if err := q.db.WithContext(ctx).Where("deleted_at IS NULL").Offset(offset).Limit(perPage).Find(&items).Error; err != nil {
         return nil, err
     }
 
     return dto.NewPaginationResponse(items, total, page, perPage), nil
 }
 
-// Method untuk pagination dengan query builder
+
 func (q *GormRepository[T]) PaginateQuery(ctx context.Context, page, perPage int) (*dto.PaginationResponse[T], error) {
     var items []T
     var total int64
     
     // Clone db untuk count
     countDB := q.db.Session(&gorm.Session{})
-    if err := countDB.WithContext(ctx).Model(new(T)).Count(&total).Error; err != nil {
+    if err := countDB.WithContext(ctx).Model(new(T)).Where("deleted_at IS NULL").Count(&total).Error; err != nil {
         return nil, err
     }
     
-    // Calculate pagination
     if page < 1 {
         page = 1
     }
@@ -149,12 +148,16 @@ func (q *GormRepository[T]) PaginateQuery(ctx context.Context, page, perPage int
     offset := (page - 1) * perPage
     // totalPages := int((total + int64(perPage) - 1) / int64(perPage))
     
-    // Execute query with pagination
-    if err := q.db.WithContext(ctx).Offset(offset).Limit(perPage).Find(&items).Error; err != nil {
+    if err := q.db.WithContext(ctx).Where("deleted_at IS NULL").Offset(offset).Limit(perPage).Find(&items).Error; err != nil {
         return nil, err
     }
 
     return dto.NewPaginationResponse(items, total, page, perPage), nil
+}
+
+func (r *GormRepository[T]) NewSession(ctx context.Context) (*gorm.DB, error) {
+    session := r.db.WithContext(ctx).Session(&gorm.Session{})
+    return session, nil
 }
 
 func (r *GormRepository[T]) Query() *GormRepository[T] {

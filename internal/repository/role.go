@@ -22,7 +22,7 @@ func (r *RoleRepository) Create(ctx context.Context, role *models.RoleModel) err
 }
 
 func (r *RoleRepository) FindByID(ctx context.Context, id string) (*models.RoleModel, error) {
-    return r.base.GetById(ctx, id)
+    return r.base.GetById(ctx, id, "roles")
 }
 
 func (r *RoleRepository) Update(ctx context.Context, id string, role *models.RoleModel) error {
@@ -34,5 +34,5 @@ func (r *RoleRepository) Delete(ctx context.Context, id string) error {
 }
 
 func (r *RoleRepository) GetAll(ctx context.Context) ([]models.RoleModel, error) {
-	return r.base.GetAll(ctx)
+	return r.base.GetAll(ctx, "roles")
 }

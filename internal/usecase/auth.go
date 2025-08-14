@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"lms-bootcamp/internal/domain/dto"
+
 	"lms-bootcamp/internal/pkg/email"
 	"lms-bootcamp/internal/pkg/utils"
 	"lms-bootcamp/internal/repository"
@@ -14,7 +15,7 @@ import (
 type AuthUseCase struct {
 	repository *repository.AuthRepository
 	utils      *utils.Utils
-	email 	*email.EmailService
+	email      *email.EmailService
 }
 
 func NewAuthUseCase(repo *repository.AuthRepository, utils *utils.Utils) *AuthUseCase {

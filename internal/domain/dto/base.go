@@ -34,6 +34,9 @@ type PaginationResponse[T any] struct {
 }
 
 func NewPaginationResponse[T any](data []T, total int64, page int, perPage int) *PaginationResponse[T] {
+	if perPage == 0 {
+        perPage = 1 
+    }
 	totalPages := (total + int64(perPage) - 1) / int64(perPage)
 	hasNext := page < int(totalPages)
 	hasPrev := page > 1
