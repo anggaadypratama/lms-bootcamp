@@ -28,7 +28,12 @@ func (r *CourseRouter) GetRouter() *gin.RouterGroup {
 	courseGroup.GET("/:id_or_slug", r.handler.GetCourseByIDOrSlug)
 	courseGroup.DELETE("/:id", r.handler.DeleteCourse)
 	courseGroup.PUT("/:id", r.handler.UpdateCourse)
-	courseGroup.GET("/user/:course_id", r.handler.GetUser)
+
+	userCourseGroup := courseGroup.Group("/user/:course_id")
+	userCourseGroup.GET("/", r.handler.GetUser)
+	userCourseGroup.POST("/", r.handler.BulkAddUser)
+	userCourseGroup.DELETE("/", r.handler.RemoveUser)
+	
 
 	// r.router.Use(r.authMiddleware.ValidateRole(dto.RoleAdmin, dto.RoleMentor))
 	// {

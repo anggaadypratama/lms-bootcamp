@@ -42,6 +42,15 @@ func (r *GormRepository[T]) Create(ctx context.Context, item *T) error {
 	})
 }
 
+func (r *GormRepository[T]) BulkCreate(ctx context.Context, items []*T) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(items).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
 func (r *GormRepository[T]) Update(ctx context.Context, id string, item *T) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Model(new(T)).Where("id = ? AND deleted_at IS NULL", id).Updates(item).Error; err != nil {

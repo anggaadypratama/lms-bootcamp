@@ -150,3 +150,44 @@ func (h *CourseHandler) GetUser(c *gin.Context) {
 	}
 	c.JSON(200, dto.NewResponse("User retrieved successfully", 200, &user, nil))
 }
+
+func (h *CourseHandler) BulkAddUser(c *gin.Context) {
+	id := c.Param("course_id")
+	var userIds struct {
+		IDs  []*string `json:"ids"`
+		Role string    `json:"role"`
+	}
+	if err := c.ShouldBindJSON(&userIds); err != nil {
+		errMsg := err.Error()
+		c.JSON(http.StatusBadRequest, dto.NewResponse("Invalid request payload", 400, nil, &errMsg))
+		return
+	}
+
+	if err := h.usecase.BulkAddUser(c.Request.Context(), id, &userIds.Role, userIds.IDs); err != nil {
+		errMsg := err.Error()
+		c.JSON(http.StatusInternalServerError, dto.NewResponse("Failed to add users", 400, nil, &errMsg))
+		return
+	}
+
+	c.JSON(200, dto.NewResponse[[]string]("Users added successfully", 200, nil, nil))
+}
+
+func (h *CourseHandler) RemoveUser(c *gin.Context) {
+	id := c.Param("course_id")
+	userId := c.Query("user_id")
+	role := c.Query("role")
+
+	if id == "" || userId == "" || role == "" {
+		errMsg := "Invalid Payload"
+		c.JSON(http.StatusBadRequest, dto.NewResponse("Failed to remove user", 400, nil, &errMsg))
+		return
+	}
+
+	if err := h.usecase.RemoveUser(c.Request.Context(), id, &userId, role); err != nil {
+		errMsg := err.Error()
+		c.JSON(http.StatusInternalServerError, dto.NewResponse("Failed to remove user", 400, nil, &errMsg))
+		return
+	}
+
+	c.JSON(200, dto.NewResponse[[]string]("User removed successfully", 200, nil, nil))
+}

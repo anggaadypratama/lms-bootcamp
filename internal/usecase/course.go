@@ -33,7 +33,7 @@ func (uc *CourseUseCase) CreateCourse(ctx context.Context, course *dto.CourseReq
 		return errStudent
 	}
 	
-	err := uc.repo.Create(ctx, &models.CourseModel{
+	err := uc.repo.Add(ctx, &models.CourseModel{
 		Title:       course.Title,
 		Description: course.Description,
 		Slug:       slug.Make(course.Title),
@@ -74,6 +74,18 @@ func (uc *CourseUseCase) GetAllCourses(ctx context.Context, filter *dto.CourseFi
 	return uc.repo.GetAll(ctx, page, pageSize)
 }
 
-func (uc *CourseUseCase) GetCoursesByUser(ctx context.Context, userID string, role string) ([]*models.UserModel, error) {
+func (uc *CourseUseCase) GetCoursesByUser(ctx context.Context, userID string, role string) ([]*dto.UserData, error) {
 	return uc.repo.GetAllUser(ctx, userID, &role)
+}
+
+func (uc *CourseUseCase) BulkAddUser(ctx context.Context, courseId string, role *string, userIds []*string) error {
+	return uc.repo.BulkAddUser(ctx, courseId, role, userIds)
+}
+
+func (uc *CourseUseCase) RemoveUser(ctx context.Context, courseId string, userId *string, role string) error {
+	if err := uc.repo.RemoveUser(ctx, courseId, *userId, &role); err != nil {
+		return err
+	}
+
+	return nil
 }
