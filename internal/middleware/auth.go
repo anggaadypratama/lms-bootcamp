@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"lms-bootcamp/internal/domain/dto"
 	"lms-bootcamp/internal/pkg/utils"
 	"net/http"
@@ -60,8 +59,6 @@ func (m *AuthMiddleware) Authenticate() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-
-		fmt.Println("Authenticated user:", responseData)
 
 		roleData, ok := responseData["Role"].(map[string]interface{})
 		if !ok {

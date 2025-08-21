@@ -1,8 +1,10 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"gorm.io/gorm"
+)
 
 type BaseModel struct {
 	gorm.Model
-   	ID       string `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID string `gorm:"primaryKey;type:varchar(36);default:(uuid_generate_v4()::text)"`
 }

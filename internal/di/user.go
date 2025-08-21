@@ -18,7 +18,7 @@ type UserDI struct {
 func NewUserDI(db *gorm.DB) *UserDI {
 	repo := repository.NewUserRepository(db)
 	usecase := usecase.NewUserUseCase(repo)
-	handler := handler.NewUserHandler(usecase)
+	handler := handler.NewUserHandler(*usecase)
 
 	return &UserDI{
 		db:      db,

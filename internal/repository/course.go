@@ -115,12 +115,11 @@ func (r *CourseRepository) GetAll(ctx context.Context, page, pageSize *int) (*dt
 	return courses, nil
 }
 
-func (r *CourseRepository) GetByFilter(ctx context.Context, filter *dto.CourseFilter, page, pageSize *int, table string) (*dto.PaginationResponse[models.CourseModel], error) {
-    session := r.base.db.Session(&gorm.Session{})
-    sessionRepo := NewGormRepository[models.CourseModel](session)
+func (r *CourseRepository) GetByFilter(ctx context.Context, search string, page, pageSize *int) (*dto.PaginationResponse[models.CourseModel], error) {
+    sessionRepo := r.base.Where("courses.deleted_at IS NULL")
 
-    if filter.Title != "" {
-        sessionRepo = sessionRepo.Where(table+".title ILIKE ?", "%"+filter.Title+"%")
+    if search != "" {
+        sessionRepo = sessionRepo.Where("title ILIKE ?", "%"+search+"%")
     }
 
     if page == nil || pageSize == nil {
@@ -135,30 +134,33 @@ func (r *CourseRepository) GetByFilter(ctx context.Context, filter *dto.CourseFi
     if err != nil {
         return nil, err
     }
-
-    fmt.Println("courses:", *courses)
     return courses, nil
 }
 
 func (r *CourseRepository) GetAllUser(ctx context.Context, id string, role *string) ([]*dto.UserData, error) {
     var course models.CourseModel
+    var roles *models.RoleModel
 
+    if err := r.base.db.First(&roles, "id = ?", *role).Error; err != nil {
+        return nil, fmt.Errorf("role %s not found", *role)
+    }
+    
     err := r.base.db.Preload("Students").Preload("Mentors").First(&course, "id = ?", id).Where("courses.deleted_at IS NULL").Error
 
     v := reflect.ValueOf(course)
-    field := v.FieldByName(r.utils.ToPascalCase(*role)+"s")
+    field := v.FieldByName(r.utils.ToPascalCase(roles.Name)+"s")
     if err != nil {
         return nil, err
     }
 
     if !field.IsValid() {
-        return nil, fmt.Errorf("field %s not found in course model", *role)
+        return nil, fmt.Errorf("field %s not found in course model", roles.Name)
     }
     
 
     users, ok := field.Interface().([]*models.UserModel)
     if !ok {
-        return nil, fmt.Errorf("field %s is not a slice of UserModel", *role)
+        return nil, fmt.Errorf("field %s is not a slice of UserModel", roles.Name)
     }
 
     var userData []*dto.UserData
@@ -174,27 +176,42 @@ func (r *CourseRepository) GetAllUser(ctx context.Context, id string, role *stri
     return userData, nil
 }
 
-func (r *CourseRepository) BulkAddUser(ctx context.Context, courseId string, role *string, userIds []*string) error {
+func (r *CourseRepository) BulkAddUser(ctx context.Context, courseId string, role_id *string, userIds []*string) error {
     return r.base.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-        var course models.CourseModel
+        var course *models.CourseModel
+        var role *models.RoleModel
+        
+        if err := r.base.db.First(&role, "roles.id = ?", *role_id).Error; err != nil {
+            return fmt.Errorf("role %s not found", *role_id)
+        }
 
-        if err := r.base.db.First(&course, "id = ? AND deleted_at IS NULL", courseId).Error; err != nil {
+        if err := r.base.db.First(&course, "courses.id = ? AND courses.deleted_at IS NULL", courseId).Error; err != nil {
             return fmt.Errorf("course with ID %s not found", courseId)
         }
 
         var users []*models.UserModel
-        if err := r.user.db.WithContext(ctx).Joins("Role").Where("users.deleted_at IS NULL AND users.id IN ?", userIds).Find(&users).Error; err != nil {
-            return fmt.Errorf("failed to find users: %v", err)
-        }
+            if err := r.user.db.WithContext(ctx).Preload("Role").Where("users.role_id = ? AND users.id IN ?", *role_id, userIds).Find(&users).Error; err != nil {
+                return fmt.Errorf("failed to find user: %v", err)
+            }
+
+            // Restore soft deleted users (deleted_at != null)
+            for _, user := range users {
+                if user.DeletedAt.Valid {
+                    if err := r.user.db.Model(user).Update("deleted_at", nil).Error; err != nil {
+                        return fmt.Errorf("failed to restore user %s: %v", user.ID, err)
+                    }
+                    user.DeletedAt.Valid = false
+                }
+            }
 
         for _, user := range users {
-            if user.Role.Name != *role {
-                return fmt.Errorf("user %s is not a %s", user.ID, *role)
+            if user.Role.ID != *role_id {
+                return fmt.Errorf("user %s is not a %s", user.ID, role.Name)
             }
         }
 
-        if err := r.base.db.Model(&course).Association(r.utils.ToPascalCase(*role) + "s").Append(users); err != nil {
-            return fmt.Errorf("failed to add mentors: %v", err)
+        if err := r.base.db.Model(&course).Association(r.utils.ToPascalCase(role.Name) + "s").Append(users); err != nil {
+            return fmt.Errorf("failed to add user: %v", err)
         }
 
         return nil
@@ -205,16 +222,22 @@ func (r *CourseRepository) BulkAddUser(ctx context.Context, courseId string, rol
 func (r *CourseRepository) RemoveUser(ctx context.Context, courseId string, userId string, role *string) error {
     return r.base.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
         var course models.CourseModel
+        var roles *models.RoleModel
+
+        if err := r.base.db.First(&roles, "id = ?", *role).Error; err != nil {
+            return fmt.Errorf("role %s not found", *role)
+        }
+
         if err := tx.First(&course, "id = ? AND deleted_at IS NULL", courseId).Error; err != nil {
             return fmt.Errorf("course with ID %s not found", courseId)
         }
 
         var user models.UserModel
-        if err := tx.First(&user, "id = ? AND role_id = (SELECT id FROM roles WHERE name = ?) AND deleted_at IS NULL", userId, *role).Error; err != nil {
-            return fmt.Errorf("user with ID %s and role %s not found", userId, *role)
+        if err := tx.First(&user, "id = ? AND role_id = (SELECT id FROM roles WHERE name = ?) AND deleted_at IS NULL", userId, roles.Name).Error; err != nil {
+            return fmt.Errorf("user with ID %s and role %s not found", userId, roles.Name)
         }
 
-        if err := tx.Model(&course).Association(r.utils.ToPascalCase(*role) + "s").Delete(&user); err != nil {
+        if err := tx.Model(&course).Association(r.utils.ToPascalCase(roles.Name) + "s").Delete(&user); err != nil {
             return fmt.Errorf("failed to remove user: %v", err)
         }
 

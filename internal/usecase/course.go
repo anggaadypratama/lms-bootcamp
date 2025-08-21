@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"fmt"
 	"lms-bootcamp/internal/domain/dto"
 	"lms-bootcamp/internal/domain/models"
 	"lms-bootcamp/internal/repository"
@@ -11,29 +10,29 @@ import (
 )
 
 type CourseUseCase struct {
-	repo *repository.CourseRepository
+	repository *repository.CourseRepository
 }
 
 
 func NewCourseUseCase(repo *repository.CourseRepository) *CourseUseCase {
 	return &CourseUseCase{
-		repo: repo,
+		repository: repo,
 	}
 }
 
 func (uc *CourseUseCase) CreateCourse(ctx context.Context, course *dto.CourseRequest) error {
-	mentor, errMentor := uc.repo.ParallelFindUser(ctx, course.Mentor, dto.RoleMentor)
-	student, errStudent := uc.repo.ParallelFindUser(ctx, course.Student, dto.RoleStudent)
+	mentor, errMentor := uc.repository.ParallelFindUser(ctx, course.Mentor, dto.RoleMentor)
+	student, errStudent := uc.repository.ParallelFindUser(ctx, course.Student, dto.RoleStudent)
 
 	if errMentor != nil || len(mentor) == 0 {
 		return errMentor
 	}
 
-	if errStudent != nil || len(student) == 0 {
+	if errStudent != nil {
 		return errStudent
 	}
-	
-	err := uc.repo.Add(ctx, &models.CourseModel{
+
+	err := uc.repository.Add(ctx, &models.CourseModel{
 		Title:       course.Title,
 		Description: course.Description,
 		Slug:       slug.Make(course.Title),
@@ -49,11 +48,11 @@ func (uc *CourseUseCase) CreateCourse(ctx context.Context, course *dto.CourseReq
 }
 
 func (uc *CourseUseCase) GetCourseByIDOrSlug(ctx context.Context, idOrSlug string) (*models.CourseModel, error) {
-	return uc.repo.FindDetail(ctx, idOrSlug)
+	return uc.repository.FindDetail(ctx, idOrSlug)
 }
 
 func (uc *CourseUseCase) UpdateCourse(ctx context.Context, id string, course *dto.CourseRequest) error {
-	return uc.repo.Update(ctx, id, &models.CourseModel{
+	return uc.repository.Update(ctx, id, &models.CourseModel{
 		Title:       course.Title,
 		Description: course.Description,
 		Slug:       slug.Make(course.Title),
@@ -61,31 +60,26 @@ func (uc *CourseUseCase) UpdateCourse(ctx context.Context, id string, course *dt
 }
 
 func (uc *CourseUseCase) DeleteCourse(ctx context.Context, id string) error {
-	return uc.repo.Delete(ctx, id)
+
+	return uc.repository.Delete(ctx, id)
 }
 
-func (uc *CourseUseCase) GetAllCourses(ctx context.Context, filter *dto.CourseFilter, page, pageSize *int) (*dto.PaginationResponse[models.CourseModel], error) {
-	fmt.Println("Page:", *page)
-	fmt.Println("PageSize:", *pageSize)
-	_, err := uc.repo.GetByFilter(ctx, filter, page, pageSize, "courses")
+func (uc *CourseUseCase) GetAllCourses(ctx context.Context, search string, page, pageSize *int) (*dto.PaginationResponse[models.CourseModel], error) {
+	_, err := uc.repository.GetByFilter(ctx, search, page, pageSize)
 	if err != nil {
 		return nil, err
 	}
-	return uc.repo.GetAll(ctx, page, pageSize)
+	return uc.repository.GetAll(ctx, page, pageSize)
 }
 
 func (uc *CourseUseCase) GetCoursesByUser(ctx context.Context, userID string, role string) ([]*dto.UserData, error) {
-	return uc.repo.GetAllUser(ctx, userID, &role)
+	return uc.repository.GetAllUser(ctx, userID, &role)
 }
 
 func (uc *CourseUseCase) BulkAddUser(ctx context.Context, courseId string, role *string, userIds []*string) error {
-	return uc.repo.BulkAddUser(ctx, courseId, role, userIds)
+	return uc.repository.BulkAddUser(ctx, courseId, role, userIds)
 }
 
 func (uc *CourseUseCase) RemoveUser(ctx context.Context, courseId string, userId *string, role string) error {
-	if err := uc.repo.RemoveUser(ctx, courseId, *userId, &role); err != nil {
-		return err
-	}
-
-	return nil
+	return uc.repository.RemoveUser(ctx, courseId, *userId, &role)
 }

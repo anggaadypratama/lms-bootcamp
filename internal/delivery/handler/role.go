@@ -2,10 +2,11 @@ package handler
 
 import (
 	"context"
-	"time"
-
 	"lms-bootcamp/internal/domain/dto"
-	"lms-bootcamp/internal/domain/usecase"
+	"lms-bootcamp/internal/pkg/utils"
+	"lms-bootcamp/internal/usecase"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,16 +14,17 @@ import (
 
 type RoleHandler struct {
 	u usecase.RoleUseCase
+	utils *utils.Utils
 }
 
 func NewRoleHandler(usecase usecase.RoleUseCase) *RoleHandler {
 	return &RoleHandler{
 		u: usecase,
+		utils: utils.NewUtils(),
 	}
 }
 
 func (h *RoleHandler) GetRoles(c *gin.Context)  {
-
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5 * time.Second)
 	defer cancel()
 
@@ -56,16 +58,23 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 	_, cancel := context.WithTimeout(c.Request.Context(), 5 * time.Second)
 	defer cancel()
 
-	var role dto.RoleRequest
+	var role *dto.RoleRequest
 
 	if err := c.ShouldBindJSON(&role); err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
-		return
+        var errMsg []string
+        if strings.Contains(err.Error(), "validation") {
+            errMsg = h.utils.ParseValidationError(err)
+        } else {
+            errMsg = []string{err.Error()}
+        }
+        c.JSON(400, dto.NewResponse("Invalid request payload", 400, nil, &errMsg))
+        return
 	}
 
 	_, err := h.u.CreateRole(c.Request.Context(), role.Name)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		errMsg := err.Error()
+		c.JSON(500, dto.NewResponse("Failed to create role", 500, nil, &errMsg))
 		return
 	}
 
@@ -81,9 +90,14 @@ func (h *RoleHandler) UpdateRole(c *gin.Context) {
 	var role dto.RoleRequest
 
 	if err := c.ShouldBindJSON(&role); err != nil {
-		errorMsg := err.Error()
-		c.JSON(400, dto.NewResponse("Invalid request payload", 400, nil, &errorMsg))
-		return
+        var errMsg []string
+        if strings.Contains(err.Error(), "validation") {
+            errMsg = h.utils.ParseValidationError(err)
+        } else {
+            errMsg = []string{err.Error()}
+        }
+        c.JSON(400, dto.NewResponse("Invalid request payload", 400, nil, &errMsg))
+        return
 	}
 
 	err := h.u.UpdateRole(c.Request.Context(), roleID, role.Name)

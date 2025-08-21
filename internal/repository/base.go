@@ -65,6 +65,7 @@ func (r *GormRepository[T]) Delete(ctx context.Context, id string) error {
 		if err := tx.Where("id = ?", id).Delete(new(T)).Error; err != nil {
 			return err
 		}
+
 		return nil
 	})
 }
@@ -75,12 +76,12 @@ func (r *GormRepository[T]) GetById(ctx context.Context, id string, table ...str
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var idQuery string
 		if len(table) == 0 || table[0] == "" {
-			idQuery = "id = ?"
+			idQuery = "id = ? AND deleted_at IS NULL"
 		} else {
-			idQuery = fmt.Sprintf("%s.id = ?", table[0])
+			idQuery = fmt.Sprintf("%s.id = ? AND %s.deleted_at IS NULL", table[0], table[0])
 		}
 
-		if err := tx.Where(table[0]+".deleted_at IS NULL").First(&item, idQuery, id).Error; err != nil {
+		if err := tx.Where(idQuery, id).First(&item).Error; err != nil {
 			return err
 		}
 		return nil
@@ -118,17 +119,14 @@ func (q *GormRepository[T]) Paginate(ctx context.Context, page, perPage int) (*d
         return nil, err
     }
 
-
     if page < 1 {
         page = 1
     }
     if perPage < 1 {
-        perPage = 10
+        perPage = int(total)
     }
-
     
     offset := (page - 1) * perPage
-    
     if err := q.db.WithContext(ctx).Where("deleted_at IS NULL").Offset(offset).Limit(perPage).Find(&items).Error; err != nil {
         return nil, err
     }

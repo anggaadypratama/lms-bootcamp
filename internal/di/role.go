@@ -18,7 +18,7 @@ type RoleDI struct {
 func NewRoleDI(db *gorm.DB) *RoleDI {
 	repo := repository.NewRoleRepository(db)
 	usecase := usecase.NewRoleUseCase(repo)
-	handler := handler.NewRoleHandler(usecase)
+	handler := handler.NewRoleHandler(*usecase)
 
 	return &RoleDI{
 		db:      db,

@@ -5,6 +5,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -67,8 +68,27 @@ func (u *Utils) ToPascalCase(s string) string {
 				result = append(result, unicode.ToLower(r))
 			}
 		} else {
-			capitalizeNext = true // Next letter should be capitalized
+			capitalizeNext = true 
 		}
 	}
 	return string(result)
+}
+
+func (u *Utils) ParseValidationError(err error) []string {
+    var errs []string
+    if ve, ok := err.(validator.ValidationErrors); ok {
+        for _, fe := range ve {
+            field := fe.Field()
+            tag := fe.Tag()
+            switch tag {
+            case "required":
+                errs = append(errs, field+" is required")
+            default:
+                errs = append(errs, field+" is not valid")
+            }
+        }
+    } else {
+        errs = append(errs, err.Error())
+    }
+    return errs
 }

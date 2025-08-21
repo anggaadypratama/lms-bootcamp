@@ -3,8 +3,10 @@ package handler
 import (
 	"context"
 	"lms-bootcamp/internal/domain/dto"
-	"lms-bootcamp/internal/domain/usecase"
+	"lms-bootcamp/internal/pkg/utils"
+	"lms-bootcamp/internal/usecase"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,14 +15,15 @@ import (
 
 type UserHandler struct {
 	u usecase.UserUseCase
+	utils *utils.Utils
 }
 
 func NewUserHandler(usecase usecase.UserUseCase) *UserHandler {
 	return &UserHandler{
 		u: usecase,
+		utils: utils.NewUtils(),
 	}
 }
-
 
 func (h *UserHandler) GetUsers(c *gin.Context)  {
 
@@ -96,9 +99,14 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 	var user dto.UserRequest
 
 	if err := c.ShouldBindJSON(&user); err != nil {
-		errMsg := err.Error()
-		c.JSON(400, dto.NewResponse("Invalid request payload", 400, nil, &errMsg))
-		return
+        var errMsg []string
+        if strings.Contains(err.Error(), "validation") {
+            errMsg = h.utils.ParseValidationError(err)
+        } else {
+            errMsg = []string{err.Error()}
+        }
+        c.JSON(400, dto.NewResponse("Invalid request payload", 400, nil, &errMsg))
+        return
 	}
 
 	_, err := h.u.CreateUser(c.Request.Context(), &user)
@@ -120,9 +128,14 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	var user dto.UserRequest
 
 	if err := c.ShouldBindJSON(&user); err != nil {
-		errorMsg := err.Error()
-		c.JSON(400, dto.NewResponse("Invalid request payload", 400, nil, &errorMsg))
-		return
+        var errMsg []string
+        if strings.Contains(err.Error(), "validation") {
+            errMsg = h.utils.ParseValidationError(err)
+        } else {
+            errMsg = []string{err.Error()}
+        }
+        c.JSON(400, dto.NewResponse("Invalid request payload", 400, nil, &errMsg))
+        return
 	}
 
 	err := h.u.UpdateUser(c.Request.Context(), userID, &user)

@@ -20,16 +20,17 @@ func NewBaseRouter(r *gin.Engine, db *gorm.DB) *BaseRouter {
 
 func (r *BaseRouter) GetRouter() *gin.Engine {
 	v1Public := r.router.Group("/api/v1")
-	v1Protected := r.router.Group("/api/v1/")
+	v1Protected := r.router.Group("/api/v1")
 	r.router.Use(gin.Recovery())
 
+	NewSessionRouter(v1Protected, r.db).GetRouter()
 	NewCourseRouter(v1Protected, r.db).GetRouter()
 
 
 	// v1Protected.Use(r.authMiddleware.Authenticate())
 	// {
-		NewRoleRouter(v1Protected, r.db).GetRouter()
-		NewUserRouter(v1Protected, r.db).GetRouter()
+	NewRoleRouter(v1Protected, r.db).GetRouter()
+	NewUserRouter(v1Protected, r.db).GetRouter()
 	// }
 
 	NewAuthRouter(v1Public, r.db).GetRouter()

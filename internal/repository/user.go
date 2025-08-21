@@ -63,7 +63,7 @@ func (r *UserRepository) GetByFilter(ctx context.Context, filter *map[string]int
     if filter != nil {
         for key, value := range *filter {
             if key == "name" || key == "email" {
-                defaultDb = defaultDb.Where(table+"."+key+" LIKE ?", "%"+fmt.Sprintf("%v", value)+"%")
+                defaultDb = defaultDb.Where(table+"."+key+" ILIKE ?", "%"+fmt.Sprintf("%v", value)+"%")
             } else {
                 defaultDb = defaultDb.Where(table+"."+key+" = ?", value)
             }

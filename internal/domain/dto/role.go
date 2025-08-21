@@ -1,7 +1,7 @@
 package dto
 
 type RoleRequest struct {
-	Name string `json:"name" binding:"required"`
+	Name string `json:"name" binding:"required" jsonschema:"required,description=Role Name"`
 }
 
 type RoleData struct {

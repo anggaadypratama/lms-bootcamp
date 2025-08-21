@@ -120,9 +120,10 @@ func (uc *UserUseCase) UpdateUser(ctx context.Context, id string,  item *dto.Use
 }
 
 func (uc *UserUseCase) DeleteUser(ctx context.Context, id string) error {
-	err := uc.repository.Delete(ctx, id)
+	_, err := uc.repository.FindByID(ctx, id)
 	if err != nil {
 		return err
 	}
-	return nil
+	
+	return uc.repository.Delete(ctx, id)
 }

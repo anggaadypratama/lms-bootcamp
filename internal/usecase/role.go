@@ -69,9 +69,10 @@ func (uc *RoleUseCase) UpdateRole(ctx context.Context, id string, name string) e
 
 
 func (uc *RoleUseCase) DeleteRole(ctx context.Context, id string) error {
-	err := uc.repository.Delete(ctx, id)
+	_, err := uc.repository.FindByID(ctx, id)
 	if err != nil {
 		return err
 	}
-	return nil
+	
+	return uc.repository.Delete(ctx, id)
 }

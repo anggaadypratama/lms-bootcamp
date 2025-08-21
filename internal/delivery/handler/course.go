@@ -2,10 +2,13 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"lms-bootcamp/internal/domain/dto"
+	"lms-bootcamp/internal/pkg/utils"
 	"lms-bootcamp/internal/usecase"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,21 +16,27 @@ import (
 
 type CourseHandler struct {
 	usecase *usecase.CourseUseCase
+	utils   *utils.Utils
 }
 
 func NewCourseHandler(uc *usecase.CourseUseCase) *CourseHandler {
 	return &CourseHandler{
 		usecase: uc,
+		utils:   utils.NewUtils(),
 	}
 }
-
 
 func (h *CourseHandler) CreateCourse(c *gin.Context) {
 	var course *dto.CourseRequest
 	if err := c.ShouldBindJSON(&course); err != nil {
-		errMsg := err.Error()
-		c.JSON(http.StatusBadRequest, dto.NewResponse("Invalid request payload", 400, nil, &errMsg))
-		return
+        var errMsg []string
+        if strings.Contains(err.Error(), "validation") {
+            errMsg = h.utils.ParseValidationError(err)
+        } else {
+            errMsg = []string{err.Error()}
+        }
+        c.JSON(400, dto.NewResponse("Invalid request payload", 400, nil, &errMsg))
+        return
 	}
 
 
@@ -56,15 +65,15 @@ func (h *CourseHandler) GetAllCourses(c *gin.Context) {
 	_, cancel := context.WithTimeout(c.Request.Context(), 5 * time.Second)
 	defer cancel()
 
-	var filter dto.CourseFilter
+	var search string
 	var page, pageSize int
 	
-	if f := c.Query("filter"); f != "" {
-		filter.Title = f
+	if f := c.Query("search"); f != "" {
+		search = f
 	}
 	
 
-	if err := c.ShouldBindQuery(&filter); err != nil {
+	if err := c.ShouldBindQuery(&search); err != nil {
 		errMsg := err.Error()
 		c.JSON(http.StatusInternalServerError,dto.NewResponse("Invalid filter", 400, nil, &errMsg))
 		return
@@ -91,9 +100,9 @@ func (h *CourseHandler) GetAllCourses(c *gin.Context) {
 		}
 	}
 
-	
+	fmt.Println("cari:", search)
 
-	courses, err := h.usecase.GetAllCourses(c.Request.Context(), &filter, &page, &pageSize)
+	courses, err := h.usecase.GetAllCourses(c.Request.Context(), search, &page, &pageSize)
 	if err != nil {
 		errMsg := err.Error()
 		c.JSON(http.StatusInternalServerError,dto.NewResponse("Failed to retrieve courses", 400, nil, &errMsg))
@@ -116,9 +125,14 @@ func (h *CourseHandler) DeleteCourse(c *gin.Context) {
 func (h *CourseHandler) UpdateCourse(c *gin.Context) {
 	var course *dto.CourseRequest
 	if err := c.ShouldBindJSON(&course); err != nil {
-		errMsg := err.Error()
-		c.JSON(http.StatusBadRequest, dto.NewResponse("Invalid request payload", 400, nil, &errMsg))
-		return
+        var errMsg []string
+        if strings.Contains(err.Error(), "validation") {
+            errMsg = h.utils.ParseValidationError(err)
+        } else {
+            errMsg = []string{err.Error()}
+        }
+        c.JSON(400, dto.NewResponse("Invalid request payload", 400, nil, &errMsg))
+        return
 	}
 
 	id := c.Param("id")
@@ -131,16 +145,15 @@ func (h *CourseHandler) UpdateCourse(c *gin.Context) {
 	c.JSON(200, dto.NewResponse("Course updated successfully", 200, &course, nil))
 }
 
-func (h *CourseHandler) GetUser(c *gin.Context) {
+func (h *CourseHandler) GetAllUser(c *gin.Context) {
 	id := c.Param("course_id")
-	role := c.Query("role")
+	role := c.Query("role_id")
 
 	if id == "" {
 		errMsg := "Invalid ID"
 		c.JSON(http.StatusBadRequest, dto.NewResponse("Failed to retrieve user", 400, nil, &errMsg))
 		return
 	}
-	
 
 	user, err := h.usecase.GetCoursesByUser(c.Request.Context(), id, role)
 	if err != nil {
@@ -153,17 +166,19 @@ func (h *CourseHandler) GetUser(c *gin.Context) {
 
 func (h *CourseHandler) BulkAddUser(c *gin.Context) {
 	id := c.Param("course_id")
-	var userIds struct {
-		IDs  []*string `json:"ids"`
-		Role string    `json:"role"`
-	}
+	var userIds dto.CourseUserRequest
 	if err := c.ShouldBindJSON(&userIds); err != nil {
-		errMsg := err.Error()
-		c.JSON(http.StatusBadRequest, dto.NewResponse("Invalid request payload", 400, nil, &errMsg))
-		return
+        var errMsg []string
+        if strings.Contains(err.Error(), "validation") {
+            errMsg = h.utils.ParseValidationError(err)
+        } else {
+            errMsg = []string{err.Error()}
+        }
+        c.JSON(400, dto.NewResponse("Invalid request payload", 400, nil, &errMsg))
+        return
 	}
 
-	if err := h.usecase.BulkAddUser(c.Request.Context(), id, &userIds.Role, userIds.IDs); err != nil {
+	if err := h.usecase.BulkAddUser(c.Request.Context(), id, userIds.RoleID, userIds.User); err != nil {
 		errMsg := err.Error()
 		c.JSON(http.StatusInternalServerError, dto.NewResponse("Failed to add users", 400, nil, &errMsg))
 		return
@@ -175,7 +190,7 @@ func (h *CourseHandler) BulkAddUser(c *gin.Context) {
 func (h *CourseHandler) RemoveUser(c *gin.Context) {
 	id := c.Param("course_id")
 	userId := c.Query("user_id")
-	role := c.Query("role")
+	role := c.Query("role_id")
 
 	if id == "" || userId == "" || role == "" {
 		errMsg := "Invalid Payload"
@@ -188,6 +203,6 @@ func (h *CourseHandler) RemoveUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, dto.NewResponse("Failed to remove user", 400, nil, &errMsg))
 		return
 	}
-
+	
 	c.JSON(200, dto.NewResponse[[]string]("User removed successfully", 200, nil, nil))
 }

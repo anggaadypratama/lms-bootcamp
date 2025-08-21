@@ -57,8 +57,7 @@ func (s *EmailService) SendEmailWithChannel(req EmailRequest) {
         msg.SetHeader("To", req.To)
         msg.SetHeader("Subject", req.Subject)
         msg.SetBody("text/plain", req.Body)
-
-        fmt.Println("Connecting to SMTP server...")
+        
         err := s.Dialer.DialAndSend(msg)
         if err != nil {
             log.Println("Gagal kirim email:", err)

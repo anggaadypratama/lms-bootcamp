@@ -5,10 +5,12 @@ import (
 	"net/http"
 
 	"lms-bootcamp/config"
+	"lms-bootcamp/internal/delivery/mcp"
 	"lms-bootcamp/internal/delivery/router"
-
 	"lms-bootcamp/internal/domain/models"
 	"lms-bootcamp/internal/pkg/database"
+
+	server "github.com/ckanthony/gin-mcp"
 
 	"github.com/gin-gonic/gin"
 )
@@ -34,6 +36,8 @@ func main() {
 		&models.UserModel{},
 		&models.CourseModel{},
 		&models.RoleModel{},
+		&models.SessionModel{},
+		&models.AssignmentModel{},
 	)
 
 	router := router.NewBaseRouter(r, conn.DB)
@@ -45,7 +49,15 @@ func main() {
 			"status":  "success",
 		})
 	})
-	
+
+	mcpServer := server.New(r, &server.Config{
+		Name:        "LMS Bootcamp",
+		Description: "An example API automatically exposed via MCP.",
+		BaseURL: "http://localhost:" + cfg.Port,
+	})
+
+	mcp.NewMcpServer(mcpServer).RegisterRoutes()
+	mcpServer.Mount("/mcp")
 
 	log.Fatal(r.Run(":" + cfg.Port))
 }
