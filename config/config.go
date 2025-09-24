@@ -19,6 +19,11 @@ type Config struct {
 	MailEncrypt string `env:"MAIL_ENCRYPTION,required"`
 	MailFrom    string `env:"MAIL_FROM_ADDRESS,required"`
 	MailName    string `env:"MAIL_FROM_NAME,required"`
+	AWS_ACCESS_KEY_ID     	string `env:"AWS_ACCESS_KEY_ID,required"`
+	AWS_SECRET_ACCESS_KEY  	string `env:"AWS_SECRET_ACCESS_KEY,required"`
+	AWS_REGION             	string `env:"AWS_REGION,required"`
+	AWS_ENDPOINT           	string `env:"AWS_ENDPOINT,required"`
+	AWS_BUCKET            	string `env:"AWS_BUCKET,required"`
 }
 
 func NewConfig() (*Config, error) {
@@ -31,14 +36,19 @@ func NewConfig() (*Config, error) {
 		DatabaseURL: os.Getenv("DATABASE_URL"),
 		Port:        os.Getenv("PORT"),
 		JWTSecret:   os.Getenv("JWT_SECRET"),
-		Mailer: os.Getenv("MAIL_MAILER"),
-		MailHost: os.Getenv("MAIL_HOST"),
-		MailPort: os.Getenv("MAIL_PORT"),
-		MailUser: os.Getenv("MAIL_USER"),
-		MailPass: os.Getenv("MAIL_PASS"),
+		Mailer: 	os.Getenv("MAIL_MAILER"),
+		MailHost: 	os.Getenv("MAIL_HOST"),
+		MailPort: 	os.Getenv("MAIL_PORT"),
+		MailUser: 	os.Getenv("MAIL_USER"),
+		MailPass: 	os.Getenv("MAIL_PASS"),
 		MailEncrypt: os.Getenv("MAIL_ENCRYPTION"),
-		MailFrom: os.Getenv("MAIL_FROM_ADDRESS"),
-		MailName: os.Getenv("MAIL_FROM_NAME"),
+		MailFrom: 	os.Getenv("MAIL_FROM_ADDRESS"),
+		MailName: 	os.Getenv("MAIL_FROM_NAME"),
+		AWS_ACCESS_KEY_ID:      os.Getenv("AWS_ACCESS_KEY_ID"),
+		AWS_SECRET_ACCESS_KEY:   os.Getenv("AWS_SECRET_ACCESS_KEY"),
+		AWS_REGION:              os.Getenv("AWS_REGION"),
+		AWS_ENDPOINT:            os.Getenv("AWS_ENDPOINT"),
+		AWS_BUCKET:              os.Getenv("AWS_BUCKET"),
 	}
 
 	return cfg, nil
